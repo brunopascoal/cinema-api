@@ -1,10 +1,11 @@
 import datetime
-from os import read
 from rest_framework import serializers
+from actors.serializers import ActorsSerializer
 from .models import Movie
 from genres.models import Genre
 from actors.models import Actors
 from django.db.models import Avg
+from genres.serializers import GenreSerializer
 class MovieSerializer(serializers.ModelSerializer):
     
     rate = serializers.SerializerMethodField(read_only=True) # A field that gets its value by calling a method on the serializer class it is attached to
@@ -30,3 +31,18 @@ class MovieSerializer(serializers.ModelSerializer):
         if len(value) > 500:
             raise serializers.ValidationError("Resume cant be greater than 200 caracters")
         return value
+    
+    
+class MovieListDetailSerializer(MovieSerializer):
+    actors = ActorsSerializer(many=True)
+    genre = GenreSerializer()
+    rate = serializers.SerializerMethodField(read_only=True) # A field that gets its value by calling a method on the serializer class it is attached to
+    class Meta:
+        model = Movie
+        fields = ['id', 'title', 'genre', 'actors', 'release_date', 'resume', 'rate']        
+    def get_rate(self, obj): # must be get_<field_name>, obj is the instance of the model, run for each instance of the model
+        rate = obj.reviews.aggregate(Avg('rate'))['rate__avg']
+        if rate:
+            return round(rate, 1)
+        return None
+    
